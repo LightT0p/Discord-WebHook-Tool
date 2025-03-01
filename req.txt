@@ -1,0 +1,4 @@
+requests
+random_string
+colorama
+pystyle
