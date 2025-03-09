@@ -90,40 +90,44 @@ def webhook_spammer():
 
     def send_request(url, send_msg, msg, send_file, path):
         global msg_sent, dead_proxies
-        messages_sent = 0
-        while messages_sent < msg_number:
-            proxies = open("./proxies.txt", "r").readlines()
-            prx = str(random.choice(proxies)).replace("\n", "")
-            proxy = {'http': prx, 'https': prx}
+        successful_sends = 0
+        while successful_sends < msg_number:
             try:
+                if do_use_proxies:
+                    proxies = open("./proxies.txt", "r").readlines()
+                    prx = str(random.choice(proxies)).replace("\n", "")
+                    proxy = {'http': prx, 'https': prx}
+                
                 if send_file:
                     with open(path, "rb") as f:
                         files = {"file": f}
                         resp = requests.post(url, json={"content": str(msg) if send_msg else "", "username": str(usrnm)}, proxies=proxy if do_use_proxies else None)
-                        resp = requests.post(url, data={"username": str(usrnm)}, files=files, proxies=proxy if do_use_proxies else None)
+                        file_resp = requests.post(url, data={"username": str(usrnm)}, files=files, proxies=proxy if do_use_proxies else None)
                 else:
                     resp = requests.post(url, json={"content": str(msg) if send_msg else "", "username": str(usrnm)}, proxies=proxy if do_use_proxies else None)
 
-                wbhk = url.split("/")
-                new_wbhk = wbhk[0] + wbhk[1] + wbhk[2] + wbhk[3] + wbhk[4] + wbhk[5] + "/" + "*" * random.randint(6, 12)
-                with print_lock:
-                    if resp.status_code >= 200 and resp.status_code <= 204:
-                        msg_sent += 1
-                        messages_sent += 1
-                        print(f" |_{Fore.GREEN}WebHook Spammer [{resp.status_code}] --> Message sent successfully to {new_wbhk} ({msg_sent}th message sent)")
-                    elif resp.status_code == 429:
-                        print(f" |_{Fore.RED}WebHook Spammer [{resp.status_code}] --> Rate limit reached for {new_wbhk}.")
-                    elif resp.status_code == 407:
-                        print(f" |_{Fore.RED}WebHook Spammer [{resp.status_code}] --> Proxy error: Authentification {proxy}.")
-                    else:
-                        print(f" |_{Fore.RED}WebHook Spammer [{resp.status_code}] --> Error: {resp.text}.")
+                if resp.status_code >= 200 and resp.status_code <= 204:
+                    msg_sent += 1
+                    successful_sends += 1
+                    print(f" |_{Fore.GREEN}WebHook Spammer [{resp.status_code}] --> Message sent successfully to {url}")
+                elif resp.status_code == 429:
+                    print(f" |_{Fore.RED}WebHook Spammer [{resp.status_code}] --> Rate limit reached for {url}.")
+                    break
+                elif resp.status_code == 407:
+                    print(f" |_{Fore.RED}WebHook Spammer [{resp.status_code}] --> Proxy error: Authentication {proxy}.")
+                    break
+                else:
+                    print(f" |_{Fore.RED}WebHook Spammer [{resp.status_code}] --> Error: {resp.text}.")
+                    break
+
             except Exception as e:
-                if str(e).find("'Unable to connect to proxy'"):
+                if "Unable to connect to proxy" in str(e):
                     if proxy not in dead_proxies:
                         dead_proxies.append(proxy)
                     print(f" |_{Fore.RED}WebHook Spammer --> Proxy error: Unable to connect {proxy}.")
                 else:
                     print(e)
+                    break
 
     threads = []
     for wbhk in valid_wbhks:
